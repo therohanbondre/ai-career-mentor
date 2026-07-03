@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+/* 
+ * Architectural Decision: Pre-commit Hook
+ * - Runs lint-staged on staged files
+ * - Ensures code quality before commits
+ * - Prevents committing poorly formatted code
+ * - Fast feedback for developers
+ */
+npx lint-staged

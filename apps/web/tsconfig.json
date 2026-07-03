@@ -1,0 +1,67 @@
+{
+  "compilerOptions": {
+    /* 
+     * Architectural Decision: Strict Type Checking
+     * - All strict options enabled for maximum type safety
+     * - Prevents runtime errors by catching issues at compile time
+     */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    /* 
+     * Architectural Decision: Module Resolution
+     * - ESNext for modern JavaScript features
+     * - Node resolution for compatibility with Node.js ecosystem
+     */
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+
+    /* 
+     * Architectural Decision: Path Aliases
+     * - Clean imports with @/ prefix for project files
+     * - Improves code readability and maintainability
+     */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/app/*": ["./app/*"],
+      "@/hooks/*": ["./lib/hooks/*"],
+      "@/types/*": ["./types/*"],
+      "@/utils/*": ["./lib/utils/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

@@ -1,0 +1,717 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  STUDENT
+  RECRUITER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+  DELETED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum ExperienceLevel {
+  ENTRY_LEVEL
+  JUNIOR
+  MID_LEVEL
+  SENIOR
+  LEAD
+  EXECUTIVE
+}
+
+enum ResumeSectionType {
+  CONTACT_INFO
+  SUMMARY
+  EXPERIENCE
+  EDUCATION
+  SKILLS
+  PROJECTS
+  CERTIFICATIONS
+  LANGUAGES
+  AWARDS
+  PUBLICATIONS
+  OTHER
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  FILLED
+  ARCHIVED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  OFFER_EXTENDED
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  REJECTED
+  WITHDRAWN
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum SkillGapPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ResumeStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum RoadmapStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum ProjectStatus {
+  RECOMMENDED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum InterviewType {
+  TECHNICAL
+  BEHAVIORAL
+  MIXED
+  SYSTEM_DESIGN
+  CODING
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AnswerStatus {
+  PENDING
+  SUBMITTED
+  EVALUATED
+}
+
+enum NotificationType {
+  RESUME_ANALYSIS_COMPLETE
+  SKILL_GAP_UPDATE
+  INTERVIEW_REMINDER
+  JOB_MATCH
+  APPLICATION_UPDATE
+  ROADMAP_UPDATE
+  PROJECT_RECOMMENDATION
+  SYSTEM
+  MARKETING
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum CoverLetterTone {
+  PROFESSIONAL
+  CONVERSATIONAL
+  ENTHUSIASTIC
+  FORMAL
+}
+
+enum CoverLetterStatus {
+  DRAFT
+  FINAL
+  ARCHIVED
+}
+
+enum AILogType {
+  RESUME_ANALYSIS
+  SKILL_GAP_ANALYSIS
+  INTERVIEW_GENERATION
+  INTERVIEW_EVALUATION
+  COVER_LETTER_GENERATION
+  PROJECT_RECOMMENDATION
+  ROADMAP_GENERATION
+  JOB_MATCHING
+  ERROR
+}
+
+enum AILogStatus {
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+  TIMEOUT
+  RATE_LIMITED
+}
+
+// ============================================================================
+// USER & PROFILE MODELS
+// ============================================================================
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  emailVerified     DateTime?
+  password          String?    // Null for OAuth users
+  role              UserRole   @default(STUDENT)
+  status            UserStatus @default(PENDING)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  lastLoginAt       DateTime?
+
+  // Relations
+  profile           Profile?
+  accounts          Account[]
+  sessions          Session[]
+  resumes           Resume[]
+  jobDescriptions   JobDescription[]
+  applications      Application[]
+  skillGaps         SkillGap[]
+  roadmaps          Roadmap[]
+  projectRecommendations ProjectRecommendation[]
+  interviewSessions InterviewSession[]
+  notifications     Notification[]
+  aiLogs            AILog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Profile {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  firstName         String?
+  lastName          String?
+  displayName       String?
+  avatar            String?
+  bio               String?    @db.Text
+  phone             String?
+  location          String?
+  website           String?
+  linkedinUrl       String?
+  githubUrl         String?
+  twitterUrl        String?
+  gender            Gender?
+  dateOfBirth       DateTime?
+  employmentType    EmploymentType?
+  experienceLevel   ExperienceLevel?
+  targetRole        String?
+  targetIndustry    String?
+  targetLocation    String?
+  salaryExpectation String?
+  availability      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Relations
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([experienceLevel])
+  @@index([targetRole])
+  @@map("profiles")
+}
+
+// ============================================================================
+// AUTHENTICATION MODELS (NextAuth)
+// ============================================================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  // Relations
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@index([expires])
+  @@map("verification_tokens")
+}
+
+// ============================================================================
+// RESUME MODELS
+// ============================================================================
+
+model Resume {
+  id            String           @id @default(cuid())
+  userId        String
+  title         String
+  fileUrl       String?
+  fileName      String
+  originalFileName String?
+  filePath      String?
+  fileSize      Int
+  fileType      String
+  mimeType      String?
+  isPrimary     Boolean          @default(false)
+  version       Int              @default(1)
+  status        ResumeStatus     @default(ACTIVE)
+  parsedData    Json?
+  parsedAt      DateTime?
+  analysis      Json?
+  resumeScore   Int?
+  atsScore      Int?
+  analyzedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections      ResumeSection[]
+  versions      ResumeVersion[]
+  atsReports    ATSReport[]
+  applications  Application[]
+
+  @@index([userId])
+  @@index([isPrimary])
+  @@index([createdAt])
+  @@index([status])
+  @@map("resumes")
+}
+
+model ResumeVersion {
+  id          String           @id @default(cuid())
+  resumeId    String
+  version     Int
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  resume      Resume           @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@index([version])
+  @@map("resume_versions")
+}
+
+model ResumeSection {
+  id          String           @id @default(cuid())
+  resumeId    String
+  type        ResumeSectionType
+  title       String?
+  content     Json             // Section content as JSON
+  order       Int
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  resume      Resume           @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@unique([resumeId, type, order])
+  @@index([resumeId])
+  @@index([type])
+  @@map("resume_sections")
+}
+
+// ============================================================================
+// ATS REPORT MODELS
+// ============================================================================
+
+model ATSReport {
+  id              String   @id @default(cuid())
+  resumeId        String
+  jobDescriptionId String?  // Null if analyzing without specific job
+  overallScore    Int      // 0-100
+  keywordScore    Int      // 0-100
+  formatScore     Int      // 0-100
+  contentScore    Int      // 0-100
+  readabilityScore Int     // 0-100
+  details         Json     // Detailed breakdown
+  recommendations Json     // Improvement suggestions
+  createdAt       DateTime @default(now())
+
+  // Relations
+  resume          Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@index([jobDescriptionId])
+  @@index([overallScore])
+  @@map("ats_reports")
+}
+
+// ============================================================================
+// JOB DESCRIPTION MODELS
+// ============================================================================
+
+model JobDescription {
+  id              String     @id @default(cuid())
+  userId          String     // Recruiter who posted it
+  title           String
+  company         String
+  description     String     @db.Text
+  requirements    String     @db.Text
+  responsibilities String     @db.Text
+  benefits        String?    @db.Text
+  skills          String[]   // Array of required skills
+  location        String?
+  salaryRange     String?
+  employmentType  EmploymentType?
+  experienceLevel ExperienceLevel?
+  remote          Boolean    @default(false)
+  status          JobStatus  @default(DRAFT)
+  postedAt        DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications    Application[]
+  atsReports      ATSReport[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([postedAt])
+  @@index([expiresAt])
+  @@index([company])
+  @@map("job_descriptions")
+}
+
+// ============================================================================
+// APPLICATION MODELS
+// ============================================================================
+
+model Application {
+  id                String           @id @default(cuid())
+  userId            String           // Student applying
+  resumeId          String
+  jobDescriptionId  String
+  status            ApplicationStatus @default(DRAFT)
+  coverLetter       String?          @db.Text
+  notes             String?          @db.Text
+  matchScore        Int?             // 0-100
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume            Resume           @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  jobDescription    JobDescription   @relation(fields: [jobDescriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobDescriptionId])
+  @@index([userId])
+  @@index([resumeId])
+  @@index([jobDescriptionId])
+  @@index([status])
+  @@index([submittedAt])
+  @@map("applications")
+}
+
+// ============================================================================
+// SKILL MODELS
+// ============================================================================
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String   // e.g., "Programming", "Soft Skills", "Tools"
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([name])
+  @@map("skills")
+}
+
+model SkillGap {
+  id              String          @id @default(cuid())
+  userId          String
+  resumeId        String?
+  targetRole      String
+  presentSkills    String[]        // Array of skill IDs
+  missingSkills    Json            // Array of {skillId, priority, estimatedTime}
+  recommendedSkills Json           // Array of skill IDs
+  analysisDetails  Json            // Detailed analysis
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resumeId])
+  @@index([targetRole])
+  @@map("skill_gaps")
+}
+
+// ============================================================================
+// ROADMAP MODELS
+// ============================================================================
+
+model Roadmap {
+  id          String        @id @default(cuid())
+  userId      String
+  title       String
+  targetRole  String
+  duration    Int           // in weeks
+  modules     Json          // Array of learning modules
+  progress    Int           @default(0) // 0-100
+  status      RoadmapStatus @default(DRAFT)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([targetRole])
+  @@map("roadmaps")
+}
+
+// ============================================================================
+// PROJECT MODELS
+// ============================================================================
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String   @db.Text
+  difficulty  ProjectDifficulty
+  skills      String[] // Array of skill IDs
+  duration    String   // Estimated time
+  category    String   // e.g., "Web Development", "Mobile", "AI/ML"
+  resources   Json     // Links to tutorials, docs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([difficulty])
+  @@index([category])
+  @@index([skills])
+  @@map("projects")
+}
+
+model ProjectRecommendation {
+  id          String        @id @default(cuid())
+  userId      String
+  projectId   String
+  status      ProjectStatus @default(RECOMMENDED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+  @@index([status])
+  @@map("project_recommendations")
+}
+
+// ============================================================================
+// INTERVIEW MODELS
+// ============================================================================
+
+model InterviewSession {
+  id          String         @id @default(cuid())
+  userId      String
+  type        InterviewType
+  jobRole     String
+  jobDescriptionId String?
+  status      InterviewStatus @default(SCHEDULED)
+  duration    Int            // in minutes
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  overallScore Int?           // 0-100
+  feedback    Json?          // Overall feedback
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers     InterviewAnswer[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([jobRole])
+  @@map("interview_sessions")
+}
+
+model InterviewAnswer {
+  id                String       @id @default(cuid())
+  interviewSessionId String
+  question          String       @db.Text
+  type              String       // technical, behavioral
+  category          String
+  difficulty        String
+  userAnswer        String?      @db.Text
+  aiFeedback        String?      @db.Text
+  score             Int?         // 0-100
+  status            AnswerStatus @default(PENDING)
+  order             Int
+  answeredAt        DateTime?
+  evaluatedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  interviewSession  InterviewSession @relation(fields: [interviewSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([interviewSessionId, order])
+  @@index([interviewSessionId])
+  @@index([status])
+  @@map("interview_answers")
+}
+
+// ============================================================================
+// NOTIFICATION MODELS
+// ============================================================================
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String           @db.Text
+  status      NotificationStatus @default(UNREAD)
+  actionUrl   String?
+  metadata    Json?            // Additional data
+  createdAt   DateTime         @default(now())
+  readAt      DateTime?
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// AI LOG MODELS
+// ============================================================================
+
+model AILog {
+  id          String     @id @default(cuid())
+  userId      String?
+  type        AILogType
+  status      AILogStatus
+  input       Json       // Input data sent to AI
+  output      Json?      // Output data from AI
+  error       String?    @db.Text
+  tokensUsed  Int?
+  latency     Int?       // in milliseconds
+  model       String?    // AI model used
+  metadata    Json?      // Additional metadata
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([model])
+  @@map("ai_logs")
+}
