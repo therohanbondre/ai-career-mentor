@@ -1,22 +1,24 @@
-import { auth } from "@/lib/auth/config"
-import { NextResponse } from "next/server"
-
 /*
  * Edge Middleware — Route Protection & RBAC
  * ─────────────────────────────────────────────────────────────────────────────
- * Runs on every request except static assets and the Next.js internals.
+ * IMPORTANT: This file runs on the EDGE RUNTIME — not Node.js.
  *
- * M0 fix: PENDING users (email not yet verified) are now redirected to
- * /auth/verify-notice instead of /auth/account-suspended, so they get a
- * clear message with a "resend email" option rather than a dead end.
+ * We import `auth` from lib/auth/middleware-auth (NOT lib/auth/config).
+ * lib/auth/config imports PrismaClient + bcrypt which are Node.js-only and
+ * crash the Edge Runtime with "does not support Node.js 'net' module".
+ *
+ * lib/auth/middleware-auth is a minimal NextAuth instance that only reads
+ * the JWT cookie — zero Node.js module usage, fully edge-compatible.
  */
+import { auth } from "@/lib/auth/middleware-auth"
+import { NextResponse } from "next/server"
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth
-  const user = req.auth?.user
+  const user       = req.auth?.user
   const { pathname } = req.nextUrl
 
-  // ── Public routes ─────────────────────────────────────────────────────────
+  // ── Public routes — no auth required ──────────────────────────────────────
   const publicRoutes = [
     "/",
     "/login",
@@ -37,20 +39,12 @@ export default auth((req) => {
     "/api/auth/resend-verification",
   ]
 
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  )
-  const isPublicApiRoute = publicApiRoutes.some((route) =>
-    pathname.startsWith(route)
-  )
+  const isPublicRoute    = publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "/"))
+  const isPublicApiRoute = publicApiRoutes.some((r) => pathname.startsWith(r))
 
-  // Allow public routes through
   if (isPublicRoute || isPublicApiRoute) {
-    // Authenticated users don't need to see login/register pages
-    if (
-      isLoggedIn &&
-      (pathname === "/login" || pathname === "/register")
-    ) {
+    // Redirect already-authenticated users away from login/register
+    if (isLoggedIn && (pathname === "/login" || pathname === "/register")) {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
     return NextResponse.next()
@@ -63,11 +57,11 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl)
   }
 
-  // ── Account status checks ─────────────────────────────────────────────────
-  const status = (user as any)?.status
+  // ── Account status gate ────────────────────────────────────────────────────
+  // JWT carries `status` stamped at sign-in (see lib/auth/config.ts jwt callback)
+  const status = user?.status as string | undefined
 
   if (status === "PENDING") {
-    // Email not yet verified — show verification notice page
     return NextResponse.redirect(new URL("/auth/verify-notice", req.url))
   }
 
@@ -75,43 +69,40 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/auth/account-suspended", req.url))
   }
 
-  // From here on the user is ACTIVE ─────────────────────────────────────────
+  // ── RBAC ───────────────────────────────────────────────────────────────────
+  const role = user?.role as string | undefined
 
-  // ── Role-based access control ──────────────────────────────────────────────
-  const role = (user as any)?.role
-
-  // Admin-only pages
-  if (pathname.startsWith("/dashboard/admin")) {
-    if (role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
-    }
+  if (pathname.startsWith("/dashboard/admin") && role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
-  // Recruiter pages (also accessible by ADMIN)
-  if (pathname.startsWith("/dashboard/recruiter")) {
-    if (role !== "RECRUITER" && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
-    }
+  if (
+    pathname.startsWith("/dashboard/recruiter") &&
+    role !== "RECRUITER" &&
+    role !== "ADMIN"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
-  // Student pages (also accessible by ADMIN)
-  if (pathname.startsWith("/dashboard/student")) {
-    if (role !== "STUDENT" && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
-    }
+  if (
+    pathname.startsWith("/dashboard/student") &&
+    role !== "STUDENT" &&
+    role !== "ADMIN"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
   // ── API RBAC ───────────────────────────────────────────────────────────────
-  if (pathname.startsWith("/api/admin")) {
-    if (role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+  if (pathname.startsWith("/api/admin") && role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  if (pathname.startsWith("/api/recruiter")) {
-    if (role !== "RECRUITER" && role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+  if (
+    pathname.startsWith("/api/recruiter") &&
+    role !== "RECRUITER" &&
+    role !== "ADMIN"
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   return NextResponse.next()
@@ -119,12 +110,7 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     *   - Next.js internals (_next/static, _next/image)
-     *   - Public assets (favicon.ico, robots.txt, images, fonts)
-     *   - NextAuth internal routes (/api/auth/*)
-     */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf)).*)",
+    // Exclude Next.js internals, static files, auth API, and public assets
+    "/((?!api/auth|_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf)).*)",
   ],
 }

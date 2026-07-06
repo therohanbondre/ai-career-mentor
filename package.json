@@ -4,36 +4,29 @@
   "private": true,
   "description": "AI Career Mentor Platform - Production-ready full-stack application",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/web"
   ],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "test": "turbo run test",
     "lint": "turbo run lint",
     "format": "turbo run format",
     "format:check": "turbo run format:check",
     "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean && rm -rf node_modules",
-    "db:generate": "cd apps/web && npx prisma generate",
-    "db:push": "cd apps/web && npx prisma db push",
-    "db:migrate": "cd apps/web && npx prisma migrate dev",
-    "db:studio": "cd apps/web && npx prisma studio",
-    "db:seed": "cd apps/web && npx prisma db seed"
+    "clean": "turbo run clean",
+    "db:generate": "npm run --prefix apps/web db:generate",
+    "db:push": "npm run --prefix apps/web db:push",
+    "db:migrate": "npm run --prefix apps/web db:migrate",
+    "db:studio": "npm run --prefix apps/web db:studio",
+    "db:seed": "npm run --prefix apps/web db:seed"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "eslint": "^9.0.0",
-    "prettier": "^3.8.1",
     "turbo": "^2.0.0",
-    "typescript": "^5.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0"
   },
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=20.0.0",
     "npm": ">=10.0.0"
-  },
-  "packageManager": "npm@10.0.0"
+  }
 }
