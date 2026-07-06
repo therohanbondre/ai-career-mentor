@@ -17,6 +17,7 @@ import NextAuth from "next-auth"
  * API routes     →  imports from lib/auth/config.ts  (Node.js runtime)
  */
 export const { auth } = NextAuth({
+  trustHost: true,
   providers: [],
   session:   { strategy: "jwt" },
   secret:    process.env.NEXTAUTH_SECRET,
