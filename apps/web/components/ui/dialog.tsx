@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
@@ -74,7 +76,7 @@ DialogHeader.displayName = "DialogHeader"
 
 const DialogFooter = ({
   className,
-  ...props"
+  ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(

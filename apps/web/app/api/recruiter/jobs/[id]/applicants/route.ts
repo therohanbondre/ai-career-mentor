@@ -65,8 +65,8 @@ export async function GET(
       applicationId:    app.id,
       userId:           app.userId,
       candidateName:
-        app.user.profile?.displayName ??
-        `${app.user.profile?.firstName ?? ""} ${app.user.profile?.lastName ?? ""}`.trim() ||
+        (app.user.profile?.displayName ??
+         `${app.user.profile?.firstName ?? ""} ${app.user.profile?.lastName ?? ""}`.trim()) ||
         app.user.email,
       candidateEmail:   app.user.email,
       candidateAvatar:  app.user.profile?.avatar ?? null,
